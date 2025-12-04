@@ -80,21 +80,21 @@ class EvalRunner:
         return output_dir
 
     def run_sampling(self):
-        # devices = GPUtil.getAvailable(
-        #     order='memory', limit = 8)[:self._infer_cfg.num_gpus]
-        devices = [0, 1, 2, 3]
         num_gpus = self._infer_cfg.num_gpus
+        devices = GPUtil.getAvailable(
+            order='memory', limit = 8, maxLoad=1, maxMemory=1
+        )[:num_gpus]
         log.info(f"Using devices: {devices}")
-        log.info(f'Evaluating {self._infer_cfg.task}')
-        if self._infer_cfg.task == 'unconditional':
+        log.info(f'Evaluating {self._task}')
+        if self._task == 'unconditional':
             if self._infer_cfg.for_rectify:
                 eval_dataset = eu.RectifyLengthDataset(dataset_cfg=self._infer_cfg.datasets)
             else:
                 eval_dataset = eu.LengthDataset(self._samples_cfg)
-        elif self._infer_cfg.task == 'scaffolding':
+        elif self._task == 'scaffolding':
             eval_dataset = eu.ScaffoldingDataset(self._samples_cfg)
         else:
-            raise ValueError(f'Unknown task {self._infer_cfg.task}')
+            raise ValueError(f'Unknown task {self._task}')
         dataloader = torch.utils.data.DataLoader(
             eval_dataset, batch_size=1, shuffle=False, drop_last=False)
         trainer = Trainer(
