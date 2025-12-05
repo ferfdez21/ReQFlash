@@ -44,8 +44,8 @@ class EdgeEmbedder(nn.Module):
         total_edge_feats = self.feat_dim * 3 + self._cfg.num_bins * 2
         if self._cfg.embed_chain:
             total_edge_feats += 1
-        # if self._cfg.embed_diffuse_mask:
-        #     total_edge_feats += 2
+        if self._cfg.embed_diffuse_mask:
+            total_edge_feats += 2
 
         if self.mode == "flash_1d_bias":
             self.k = self._cfg.k
@@ -183,7 +183,6 @@ class EdgeEmbedder(nn.Module):
 
         all_edge_feats = torch.concat([p_i, pos_emb, t_embed, sc_embed], dim=-1)
         edge_feats = self.edge_embedder(all_edge_feats)
-        # edge_feats *= p_mask[:, None, :, None, None] #Do we need this?
         z_factor_1 = edge_feats[:, 0, :, :, :]
         z_factor_2 = edge_feats[:, 1, :, :, :]
 
@@ -213,9 +212,9 @@ class EdgeEmbedder(nn.Module):
 
         all_edge_feats = [cross_node_feats, relpos_feats, dist_feats, sc_feats]
         
-        # if self._cfg.embed_diffuse_mask and diffuse_mask is not None:
-        #     diff_feat = self._cross_concat(diffuse_mask[..., None], num_batch, num_res)
-        #     all_edge_feats.append(diff_feat)
+        if self._cfg.embed_diffuse_mask and diffuse_mask is not None:
+            diff_feat = self._cross_concat(diffuse_mask[..., None], num_batch, num_res)
+            all_edge_feats.append(diff_feat)
             
         edge_feats = self.edge_embedder(torch.concat(all_edge_feats, dim=-1))
         edge_feats *= p_mask.unsqueeze(-1)
