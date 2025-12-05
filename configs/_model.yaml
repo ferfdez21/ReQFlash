@@ -2,6 +2,8 @@ model:
   node_embed_size: 256
   edge_embed_size: 128
   symmetric: False
+  use_flash_ipa: True
+  mode: "flash_1d_bias"
   node_features:
     c_s: ${model.node_embed_size}
     c_pos_emb: 128
@@ -19,6 +21,11 @@ model:
     self_condition: True
     embed_chain: False
     embed_diffuse_mask: True
+    # FlashIPA specific
+    z_factor_rank: 0 # 2 for flash attn
+    mode: ${model.mode}
+    k: 20
+    max_len: 2000
   ipa:
     c_s: ${model.node_embed_size}
     c_z: ${model.edge_embed_size}
@@ -29,3 +36,8 @@ model:
     seq_tfmr_num_heads: 4
     seq_tfmr_num_layers: 2
     num_blocks: 6
+    # FlashIPA specific
+    use_flash_attn: True
+    attn_dtype: "bf16"
+    use_packed: True
+    z_factor_rank: 2 # 2 for flash attn
