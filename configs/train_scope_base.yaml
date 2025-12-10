@@ -7,7 +7,7 @@ data:
   rectify: False
 
   sampler:
-    max_batch_size: 8
+    max_batch_size: 128
     max_num_res_squared: 500000
 
 experiment:
@@ -22,11 +22,9 @@ experiment:
   training:
     aux_loss_t_pass: 0.25
   wandb:
-    name: reqflow_train_scope_base
-    project: reqflow
+    name: reqflash_train_scope_base
+    project: reqflash
   checkpointer: # where to save checkpoints
     dirpath: ./ckpts/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
     save_top_k: -1
-  trainer:
-    accumulate_grad_batches: 16

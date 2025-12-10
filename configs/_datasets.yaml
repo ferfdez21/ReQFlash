@@ -42,8 +42,8 @@ scope_dataset:
 
 pdb_dataset:
   seed: ${shared.seed}
-  csv_path: path/to/pdb_metadata.csv # For normal training only
-  rectify_csv_path: path/to/rectify_pdb_metadata.csv  # For reflow training only
+  csv_path: ./data/demo_processed_pdb/metadata_debug.csv # For normal training only
+  rectify_csv_path: ./data/rectified_data/metadata.csv  # For reflow training only
   cluster_path: ./metadata/clusters-by-entity-30.txt # For normal training only
   max_cache_size: ${shared.max_cache_size}
   cache_num_res: 0
@@ -61,7 +61,7 @@ pdb_dataset:
   filter:
     max_num_res: 512
     min_num_res: 60
-    max_coil_percent: 0.5
+    max_coil_percent: 1.0
     rog_quantile: 0.96
     oligomeric: ['monomeric']
     num_chains: [1]

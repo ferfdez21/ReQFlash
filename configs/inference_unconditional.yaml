@@ -14,11 +14,11 @@ inference:
 
   samples:
 
-    min_length: 100
-    max_length: 300
-    length_step: 50
+    min_length: 60
+    max_length: 200
+    length_step: 35
     samples_per_length: 1 #50
-    seq_per_sample: 0 # 8 # for ProteinMPNN
+    seq_per_sample: 8 # for ProteinMPNN
 
 
   interpolant:

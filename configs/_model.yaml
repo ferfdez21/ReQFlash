@@ -20,9 +20,9 @@ model:
     num_bins: 22
     self_condition: True
     embed_chain: False
-    embed_diffuse_mask: True
+    embed_diffuse_mask: False
     # FlashIPA specific
-    z_factor_rank: 0 # 2 for flash attn
+    z_factor_rank: 2 # 2 for flash attn
     mode: ${model.mode}
     k: 20
     max_len: 2000
@@ -40,4 +40,4 @@ model:
     use_flash_attn: True
     attn_dtype: "bf16"
     use_packed: True
-    z_factor_rank: 2 # 2 for flash attn
+    z_factor_rank: ${model.edge_features.z_factor_rank}
