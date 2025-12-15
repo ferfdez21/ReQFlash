@@ -28,5 +28,3 @@ experiment:
     dirpath: ./ckpts/${experiment.wandb.project}/${experiment.wandb.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
     save_last: True
     save_top_k: -1
-  trainer:
-    accumulate_grad_batches: 1

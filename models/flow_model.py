@@ -94,10 +94,9 @@ class FlowModel(nn.Module):
         
         # Initial rigids
         curr_rigids = du.create_rigid_quats(rotquats_t, trans_t)
+        curr_rigids = self.rigids_ang_to_nm(curr_rigids)
 
         # Main trunk
-        curr_rigids = self.rigids_ang_to_nm(curr_rigids)
-        edge_embed = edge_embed * edge_mask[..., None]
         for b in range(self._ipa_conf.num_blocks):
             ipa_embed = self.trunk[f'ipa_{b}'](
                 node_embed,

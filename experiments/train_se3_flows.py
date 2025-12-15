@@ -140,7 +140,16 @@ def main(cfg: DictConfig):
         OmegaConf.set_struct(cfg, False)
         OmegaConf.set_struct(resume_cfg, False)
 
+        # Preserve values that should not be overwritten by the resume config
+        resume_ckpt_path = cfg.experiment.resume_ckpt_path
+        max_epochs = cfg.experiment.trainer.max_epochs
+        
         cfg = OmegaConf.merge(cfg, resume_cfg)
+        
+        # Restore preserved values
+        cfg.experiment.resume_ckpt_path = resume_ckpt_path
+        cfg.experiment.trainer.max_epochs = max_epochs
+        cfg.experiment.resume = True
         
         OmegaConf.set_struct(cfg, True)
 
