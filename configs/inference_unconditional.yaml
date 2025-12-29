@@ -14,16 +14,16 @@ inference:
 
   samples:
 
-    min_length: 60
+    min_length: 128
     max_length: 128
     length_step: 1
-    samples_per_length: 50
+    samples_per_length: 10
     seq_per_sample: 0 # for ProteinMPNN
 
 
   interpolant:
     sampling:
-      num_timesteps: 500
+      num_timesteps: 1  # 500
       do_sde: False
     rots:
       sample_schedule: exp

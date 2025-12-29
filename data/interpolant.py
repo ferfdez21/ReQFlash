@@ -423,6 +423,8 @@ class Interpolant:
                 raise ValueError('Must provide rotquats_1 if not corrupting.')
             batch['rotquats_t'] = rotquats_1
         batch['t'] = torch.ones((num_batch, 1), device=self._device) * t_1
+        batch['so3_t'] = batch['t']
+        batch['r3_t'] = batch['t']
         with torch.no_grad():
             model_out = model(batch)
         pred_trans_1 = model_out['pred_trans']

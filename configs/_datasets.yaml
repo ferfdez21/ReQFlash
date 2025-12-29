@@ -42,8 +42,8 @@ scope_dataset:
 
 pdb_dataset:
   seed: ${shared.seed}
-  csv_path: ./data/demo_processed_pdb/metadata_debug.csv # For normal training only
-  rectify_csv_path: ./data/rectified_data/metadata.csv  # For reflow training only
+  csv_path: path/to/pdb_metadata.csv # For normal training only
+  rectify_csv_path: path/to/rectify_pdb_metadata.csv  # For reflow training only
   cluster_path: ./metadata/clusters-by-entity-30.txt # For normal training only
   max_cache_size: ${shared.max_cache_size}
   cache_num_res: 0

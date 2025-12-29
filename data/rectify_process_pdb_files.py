@@ -225,12 +225,12 @@ def main(args):
     if not os.path.isdir(pdb_dir):
         raise ValueError(f"{pdb_dir} is not a valid directory")
     
-    all_file_paths = get_all_file_paths(pdb_dir) #* For with self-consistency
-    # all_file_paths = [  #* For without self-consistency
-    #                 os.path.join(root, 'sample.pdb')
-    #                 for root, dirs, files in os.walk(pdb_dir)
-    #                 if 'sample.pdb' in files and 'noise.pdb' in files
-    #             ]
+    # all_file_paths = get_all_file_paths(pdb_dir) #* For with self-consistency
+    all_file_paths = [  #* For without self-consistency
+                    os.path.join(root, 'sample.pdb')
+                    for root, dirs, files in os.walk(pdb_dir)
+                    if 'sample.pdb' in files and 'noise.pdb' in files
+                ]
     total_num_paths = len(all_file_paths)
     write_dir = args.write_dir
     if not os.path.exists(write_dir):
