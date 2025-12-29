@@ -1,4 +1,4 @@
-name: reqflash-env
+name: reqflash
 channels:
   - pytorch
   - nvidia
