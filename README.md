@@ -61,7 +61,9 @@ conda env create -f reqflow-env.yml
 
 conda activate reqflow-env
 
-pip install torch-scatter -f https://data.pyg.org/whl/torch-2.0.0+cu117.html
+pip install torch==2.8.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+pip install torch_geometric
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
 
 pip install --upgrade deepspeed
 

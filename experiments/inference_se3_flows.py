@@ -56,7 +56,8 @@ class EvalRunner:
         self._flow_module = FlowModule.load_from_checkpoint(
             checkpoint_path=ckpt_path,
             cfg=self._cfg,
-            strict=False
+            strict=False,
+            weights_only=False,
         )
         log.info(pl.utilities.model_summary.ModelSummary(self._flow_module))
         self._flow_module.eval()
@@ -99,7 +100,7 @@ class EvalRunner:
             eval_dataset, batch_size=1, shuffle=False, drop_last=False)
         trainer = Trainer(
             accelerator="gpu",
-            strategy="ddp",
+            strategy="auto",
             devices=devices,
         )
         trainer.predict(self._flow_module, dataloaders=dataloader)
