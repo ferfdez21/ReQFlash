@@ -215,7 +215,9 @@ class FlowModule(LightningModule):
             "trans_loss": trans_loss,
             "auxiliary_loss": auxiliary_loss,
             "rots_quats_vf_loss": rots_quats_vf_loss,
-            "se3_vf_loss": se3_vf_loss
+            "se3_vf_loss": se3_vf_loss,
+            "bb_atom_loss": bb_atom_loss,
+            "dist_mat_loss": dist_mat_loss,
         }
     
 
