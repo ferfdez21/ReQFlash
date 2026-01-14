@@ -6,7 +6,8 @@ defaults:
 inference:
   task: unconditional
   ckpt_path: ./ckpts/reqflow_pdb_rectify/reqflow_pdb_rectify.ckpt # path to ckpts (e.g., ..../xxx.ckpt)
-  inference_subdir: ./inference_outputs/run_${now:%Y-%m-%d}_${now:%H-%M-%S} 
+  # inference_subdir: ./inference_outputs/run_${now:%Y-%m-%d}_${now:%H-%M-%S}
+  inference_subdir: ./inference_outputs/qflash_analysis/${inference.interpolant.sampling.num_timesteps}_steps
   pmpnn_dir: ./ProteinMPNN
   pt_hub_dir: ./.cache/torch/ # path to ESMfold
   num_gpus: 1
@@ -14,16 +15,16 @@ inference:
 
   samples:
 
-    min_length: 128
+    min_length: 60
     max_length: 128
     length_step: 1
     samples_per_length: 10
-    seq_per_sample: 0 # for ProteinMPNN
+    seq_per_sample: 8 # for ProteinMPNN
 
 
   interpolant:
     sampling:
-      num_timesteps: 1  # 500
+      num_timesteps: 50
       do_sde: False
     rots:
       sample_schedule: exp
