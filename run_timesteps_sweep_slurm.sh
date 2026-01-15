@@ -1,16 +1,16 @@
 #!/bin/bash
 
-#SBATCH --job-name=reqflash_inference_sweep
+#SBATCH --job-name=reqflash_sweep_packed
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1              # 1 GPU per task
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4         # 4 CPUs per task to allow packing 8 tasks on 32-core node
+#SBATCH --cpus-per-task=4         # 4 CPUs
 #SBATCH --mem=32G
-#SBATCH --array=0-79              # 80 Total Tasks (10 Checkpoints * 8 Timesteps)
+#SBATCH --array=0-7               # Only 8 Jobs! (One per Timestep)
 #SBATCH --output=logs/sweep_%A_%a.out
 #SBATCH --error=logs/sweep_%A_%a.err
 
-# Usage: sbatch run_slurm_sweep.sh <directory_containing_checkpoints>
+# Usage: sbatch run_timesteps_sweep_slurm.sh <directory_containing_checkpoints>
 
 # 1. Validate Arguments
 CKPT_DIR="$1"
@@ -23,8 +23,7 @@ fi
 eval "$(conda shell.bash hook)"
 conda activate reqflash
 
-# 3. Discovery: Find all .ckpt files in the directory
-# We assume there are exactly 10, but this handles any number dynamically.
+# 3. Discovery: Find all .ckpt files
 CKPTS=($(ls $CKPT_DIR/*.ckpt))
 NUM_CKPTS=${#CKPTS[@]}
 
@@ -35,35 +34,34 @@ fi
 
 # 4. Define Timesteps (8 total)
 TIMESTEPS=(10 20 50 100 200 300 400 500)
-NUM_TIMESTEPS=${#TIMESTEPS[@]}
 
-# 5. Map SLURM_ARRAY_TASK_ID to (Checkpoint, Timestep) pair
-# SLURM_ARRAY_TASK_ID ranges from 0 to 79.
-# We divide by 8 to get the Checkpoint Index (0-9).
-# We modulo 8 to get the Timestep Index (0-7).
-CKPT_IDX=$((SLURM_ARRAY_TASK_ID / NUM_TIMESTEPS))
-TIME_IDX=$((SLURM_ARRAY_TASK_ID % NUM_TIMESTEPS))
+# 5. Determine Task
+# Each of the 8 jobs takes ONE timestep and processes ALL checkpoints for that timestep.
+# This reduces the job count from 80 to 8, fixing the QOSMaxSubmitJobPerUserLimit error.
+T_VAL=${TIMESTEPS[$SLURM_ARRAY_TASK_ID]}
 
-# Safety check for array bounds
-if [ $CKPT_IDX -ge $NUM_CKPTS ]; then
-    echo "Array ID $SLURM_ARRAY_TASK_ID is out of bounds for $NUM_CKPTS checkpoints."
-    exit 0
-fi
+echo "Job ID: $SLURM_ARRAY_JOB_ID, Task ID: $SLURM_ARRAY_TASK_ID"
+echo "Running on $(hostname) with GPU: $CUDA_VISIBLE_DEVICES"
+echo "Assigned Timestep: $T_VAL"
+echo "Found $NUM_CKPTS checkpoints to process."
 
-# Select the specific configuration for this task
-CURRENT_CKPT=${CKPTS[$CKPT_IDX]}
-CURRENT_TIMESTEP=${TIMESTEPS[$TIME_IDX]}
+# 6. Loop over all checkpoints
+count=1
+for CKPT in "${CKPTS[@]}"; do
+    echo "------------------------------------------------------------------"
+    echo "Processing Checkpoint ($count/$NUM_CKPTS): $CKPT"
+    echo "------------------------------------------------------------------"
+    
+    PYTHONPATH=. python -W ignore experiments/inference_se3_flows.py \
+        -cn inference_unconditional \
+        inference.interpolant.sampling.num_timesteps=$T_VAL \
+        inference.ckpt_path="$CKPT" \
+        inference.samples.min_length=60 \
+        inference.samples.max_length=128 \
+        inference.samples.samples_per_length=10 \
+        inference.samples.seq_per_sample=8
+        
+    count=$((count + 1))
+done
 
-echo "Task ID: $SLURM_ARRAY_TASK_ID"
-echo "Running on $(hostname)"
-echo "GPU: $CUDA_VISIBLE_DEVICES"
-echo "Processing Checkpoint ($((CKPT_IDX+1))/$NUM_CKPTS): $CURRENT_CKPT"
-echo "Processing Timestep ($((TIME_IDX+1))/$NUM_TIMESTEPS): $CURRENT_TIMESTEP"
-
-# 6. Run Inference
-PYTHONPATH=. python -W ignore experiments/inference_se3_flows.py \
-    -cn inference_unconditional \
-    inference.interpolant.sampling.num_timesteps=$CURRENT_TIMESTEP \
-    inference.ckpt_path="$CURRENT_CKPT"
-
-echo "Job Finished Successfully"
+echo "All checkpoints processed for timestep $T_VAL."
