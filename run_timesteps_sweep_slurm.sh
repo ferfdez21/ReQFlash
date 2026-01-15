@@ -55,11 +55,7 @@ for CKPT in "${CKPTS[@]}"; do
     PYTHONPATH=. python -W ignore experiments/inference_se3_flows.py \
         -cn inference_unconditional \
         inference.interpolant.sampling.num_timesteps=$T_VAL \
-        inference.ckpt_path="$CKPT" \
-        inference.samples.min_length=60 \
-        inference.samples.max_length=128 \
-        inference.samples.samples_per_length=10 \
-        inference.samples.seq_per_sample=8
+        inference.ckpt_path="$CKPT"
         
     count=$((count + 1))
 done
