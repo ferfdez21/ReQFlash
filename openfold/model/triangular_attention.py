@@ -78,7 +78,8 @@ class TriangleAttention(nn.Module):
     def forward(self, 
         x: torch.Tensor, 
         mask: Optional[torch.Tensor] = None,
-        chunk_size: Optional[int] = None
+        chunk_size: Optional[int] = None,
+        **kwargs,
     ) -> torch.Tensor:
         """
         Args:

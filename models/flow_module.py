@@ -222,6 +222,20 @@ class FlowModule(LightningModule):
     
 
     def validation_step(self, batch: Any, batch_idx: int):
+        # Validation Loss
+        if self._data_cfg.rectify:
+            self.interpolant.set_device(batch['sample']['res_mask'].device)
+            noisy_batch = self.interpolant.rectify_corrupt_batch(batch)
+        else:
+            self.interpolant.set_device(batch['res_mask'].device)
+            noisy_batch = self.interpolant.corrupt_batch(batch)
+        
+        with torch.no_grad():
+            batch_losses = self.model_step(noisy_batch)
+            num_batch = batch_losses['trans_loss'].shape[0]
+            for k, v in batch_losses.items():
+                self.log(f"valid/{k}", torch.mean(v), on_step=False, on_epoch=True, prog_bar=False, batch_size=num_batch)
+
         if self._data_cfg.rectify:
             res_mask = batch['sample']['res_mask']
             self.interpolant.set_device(res_mask.device)
