@@ -1,8 +1,8 @@
 #!/bin/bash
 # Script to run metric analysis for all timesteps for ReQFlash
 
-if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Usage: $0 <inference_dir_template> <dataset_dir>"
+if [ -z "$1" ]; then
+    echo "Usage: $0 <inference_dir_template> [dataset_dir]"
     exit 1
 fi
 
@@ -12,7 +12,11 @@ INF_DIR_TEMPLATE="$1"
 SCRIPT_PATH="${BASE_DIR}/analysis/run_foldseek_parallel.sh"
 DATASET_DIR="$2"
 
-echo "Starting timesteps analysis sweep for ReQFlash..."
+if [ -z "$DATASET_DIR" ]; then
+    echo "Starting designability-only timesteps analysis sweep for ReQFlash (no Foldseek)..."
+else
+    echo "Starting full timesteps analysis sweep (including Foldseek) for ReQFlash..."
+fi
 
 # Loop through each timestep
 for t in "${TIMESTEPS[@]}"; do
@@ -25,10 +29,16 @@ for t in "${TIMESTEPS[@]}"; do
     fi
 
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-    PYTHONPATH=. python analysis/all_metric_calculation.py \
-        --inference_dir "$CURRENT_INF_DIR" \
-        --script_path "$SCRIPT_PATH" \
-        --dataset_dir "$DATASET_DIR"
+
+    if [ -n "$DATASET_DIR" ]; then
+        PYTHONPATH=. python analysis/all_metric_calculation.py \
+            --inference_dir "$CURRENT_INF_DIR" \
+            --script_path "$SCRIPT_PATH" \
+            --dataset_dir "$DATASET_DIR"
+    else
+        PYTHONPATH=. python analysis/all_metric_calculation.py \
+            --inference_dir "$CURRENT_INF_DIR"
+    fi
 
     echo "Finished analysis for $t steps"
     echo "---------------------------------------------------"
