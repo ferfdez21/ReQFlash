@@ -32,7 +32,7 @@ def main():
     
     reqflash_base = args.reqflash_path
     # Baseline path
-    reqflow_base = "/home/ffernandez/Desktop/code/ReQFlow/inference_outputs/ckpts/qflow_scope/qflow_scope/unconditional/inference_outputs/qflow_analysis"
+    reqflow_base = "inference_outputs/ckpts/qflow_scope"
     
     data = []
     
@@ -76,7 +76,7 @@ def main():
     
     # Extract epoch for filename
     # matches epoch102 or epoch=102
-    match = re.search(r'epoch=?(\d+)', reqflash_base)
+    match = re.search(r'epoch?(\d+)', reqflash_base)
     epoch = match.group(1) if match else "unknown"
     
     outfile = f"results/designability_comparison_epoch{epoch}.txt"
