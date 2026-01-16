@@ -22,6 +22,7 @@ for t in "${TIMESTEPS[@]}"; do
         continue
     fi
 
+    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
     PYTHONPATH=. python analysis/all_metric_calculation.py \
         --inference_dir "$CURRENT_INF_DIR"
 
