@@ -628,10 +628,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run QFlow evaluation.")
     # Required arguments
     parser.add_argument("--inference_dir", required=True, help="Directory containing inference results.")
-    parser.add_argument("--script_path", required=True, help="Absolute Path to the FoldSeek script.")
-    parser.add_argument("--dataset_dir", required=True, help="Directory containing the FoldSeek dataset.")
-
-    # Optional arguments with defaults
+    
+    # Optional arguments with defaults - Foldseek not required
+    parser.add_argument("--script_path", required=False, default=None, help="Absolute Path to the FoldSeek script.")
+    parser.add_argument("--dataset_dir", required=False, default=None, help="Directory containing the FoldSeek dataset.")
     parser.add_argument("--database", default="pdb", help="Database to use (e.g., pdb).")
     parser.add_argument("--type", default="qflow", help="Type of evaluation (qflow, FrameFlow, FoldFlow, FrameDiff, Genie2, RFdiffusion).")
 
@@ -652,16 +652,19 @@ if __name__ == "__main__":
     designability_calculate(inference_dir)
     calc_additional_metrics(inference_dir, type, base_dir=None, time_folder=None, length_values=None)
 
-    run_foldseek(inference_dir, script_path, output_dir, database, dataset_dir=dataset_dir)
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        future_diversity_designable = executor.submit(diversity_calculate, inference_dir, type='Designable')
-        future_diversity_all = executor.submit(diversity_calculate, inference_dir, type='All')
+    if dataset_dir and script_path:
+        run_foldseek(inference_dir, script_path, output_dir, database, dataset_dir=dataset_dir)
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            future_diversity_designable = executor.submit(diversity_calculate, inference_dir, type='Designable')
+            future_diversity_all = executor.submit(diversity_calculate, inference_dir, type='All')
 
-    # wait for all the futures to complete
-    concurrent.futures.wait([future_diversity_designable, future_diversity_all])
+        # wait for all the futures to complete
+        concurrent.futures.wait([future_diversity_designable, future_diversity_all])
+        
+        foldseek_calculate(output_dir)
+    else:
+        logging.info("Skipping Foldseek and Diversity/Novelty calculations (Foldseek arguments not provided).")
     
-
-    foldseek_calculate(output_dir)
     total_time = time.time() - start_time
     with open(os.path.join(output_dir, "Metrics.txt"), "a") as f:
         f.write(f"\nTotal Evaluation time: {total_time} seconds\n")
