@@ -97,7 +97,7 @@ class EvalRunner:
         else:
             raise ValueError(f'Unknown task {self._task}')
         dataloader = torch.utils.data.DataLoader(
-            eval_dataset, batch_size=1, shuffle=False, drop_last=False)
+            eval_dataset, batch_size=self._samples_cfg.batch_size, shuffle=False, drop_last=False)
         trainer = Trainer(
             accelerator="gpu",
             strategy="auto",

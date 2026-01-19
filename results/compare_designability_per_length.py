@@ -2,8 +2,9 @@ import pandas as pd
 import argparse
 import os
 import re
+import numpy as np
 
-def compute_metrics_binned(csv_path):
+def compute_metrics_binned(csv_path, num_bins=8):
     # Reads All_Results_Origin.csv and bins by length
     
     if not os.path.exists(csv_path):
@@ -15,23 +16,28 @@ def compute_metrics_binned(csv_path):
         print(f"Warning: columns missing in {csv_path}")
         return pd.DataFrame()
         
-    # Binning
-    # Range 60-128. 4 bins.
-    bins = [60, 77, 94, 111, 129] # custom edges approx quarters: 60-77, 77-94...
-    labels = ["60-77", "78-94", "95-111", "112-128"]
+    # Dynamic Binning
+    # Infer range from data or assume standard 60-128 if within range
+    # To be safe and consistent across both datasets (which might have missing lengths),
+    # let's use the explicit global range 60-128 which the user mentioned.
+    min_len = 60
+    max_len = 129 # 128 is last length, so 129 for right=False
     
-    # Actually let's use pd.cut with equal width or explicit edges?
-    # User said "separate the whole length range (i.e., 60 to 128) in 4 bins or quarters"
-    # pd.cut(df['length'], bins=4) is the easiest way to get equal width intervals.
-    # explicit bins might be cleaner for display.
-    # Let's use clean edges. 60 + 17 = 77. 77+17=94. 94+17=111. 111+17=128.
-    bins = [59, 77, 94, 111, 129] # Edges. (59, 77] includes 60..77.
-    labels = ["60-77", "78-94", "95-111", "112-128"]
+    # Check if data is outside this range?
+    dmin = df['length'].min()
+    dmax = df['length'].max()
+    if dmin < min_len: min_len = dmin
+    if dmax >= max_len: max_len = dmax + 1
     
-    df['bin'] = pd.cut(df['length'], bins=bins, labels=labels)
+    edges = np.linspace(min_len, max_len, num_bins + 1).astype(int)
+    # Create labels like "60-68"
+    # edges[i] is inclusive start, edges[i+1] is exclusive end
+    labels = [f"{edges[i]}-{edges[i+1]-1}" for i in range(len(edges)-1)]
+    
+    df['bin'] = pd.cut(df['length'], bins=edges, labels=labels, right=False)
     
     results = []
-    grouped = df.groupby('bin', observed=False) # observed=False to include empty bins if any? No, default is fine.
+    grouped = df.groupby('bin', observed=False) 
     
     for bin_name, group in grouped:
         if group.empty:
@@ -58,12 +64,13 @@ def main():
     
     flash_csv = os.path.join(args.reqflash_path, "500_steps", "All_Results_Origin.csv")
     flow_csv = "inference_outputs/ckpts/qflow_scope/500_steps/All_Results_Origin.csv"
+    num_bins = 8
     
     print(f"Reading QFlash: {flash_csv}...")
-    df_flash = compute_metrics_binned(flash_csv)
+    df_flash = compute_metrics_binned(flash_csv, num_bins=num_bins)
     
     print(f"Reading QFlow: {flow_csv}...")
-    df_flow = compute_metrics_binned(flow_csv)
+    df_flow = compute_metrics_binned(flow_csv, num_bins=num_bins)
     
     if df_flash.empty or df_flow.empty:
         print("Data extraction failed.")
@@ -90,11 +97,10 @@ def main():
     
     match = re.search(r'epoch=?(\d+)', args.reqflash_path)
     epoch = match.group(1) if match else "unknown"
-    out = f"results/designability_by_length_bins_epoch{epoch}_500steps.txt"
+    out = f"results/designability_by_length_bins_epoch{epoch}_500steps.csv"
     if not os.path.exists('results'): os.makedirs('results')
     
-    with open(out, 'w') as f:
-        f.write(merged.to_string(index=False))
+    merged.to_csv(out, index=False)
         
     print(f"\nSaved comparison to {out}")
     print(merged.to_string(index=False))

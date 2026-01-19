@@ -20,6 +20,7 @@ inference:
     length_step: 1
     samples_per_length: 10
     seq_per_sample: 8 # for ProteinMPNN
+    batch_size: 1
 
 
   interpolant:

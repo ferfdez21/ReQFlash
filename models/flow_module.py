@@ -467,47 +467,57 @@ class FlowModule(LightningModule):
                 self.inference_dir, target, f'sample_{str(sample_id)}')
                 for sample_id in sample_ids]
         else: # unconditional
-            sample_length = batch['num_res'].item()
+            # For batched inference, we assume all samples in the batch have the same length.
+            # verify this assumption?
+            sample_length = batch['num_res'][0].item() if isinstance(batch['num_res'], torch.Tensor) else batch['num_res']
             true_bb_pos = None
             sample_dirs = [os.path.join(
                 self.inference_dir, f'length_{sample_length}', f'sample_{str(sample_id)}')
                 for sample_id in sample_ids]
             trans_1 = rotmats_1 = diffuse_mask = None
-            diffuse_mask = torch.ones(1, sample_length, device=device)
+            diffuse_mask = torch.ones(num_batch, sample_length, device=device)
 
+        start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        start_sample_time = time.time()
+
+        # Run sampling for the whole batch
+        prot_traj, atom37_traj, model_traj, _ = interpolant.sample(
+            num_batch, sample_length, self.model,
+            trans_1=trans_1, rotmats_1=rotmats_1, diffuse_mask=diffuse_mask
+        )
+
+        finish_sample_time = time.time()
+        sample_elapsed_time = finish_sample_time - start_sample_time
+        allocated = torch.cuda.memory_allocated(device) / (1024 ** 3)  
+        reserved = torch.cuda.memory_reserved(device) / (1024 ** 3)   
+
+        # Convert trajectories to numpy for saving
+        # atom37_traj is list of [B, N, 37, 3]. stack -> [T, B, N, 37, 3]. transpose -> [B, T, N, 37, 3]
+        bb_trajs = du.to_numpy(torch.stack(atom37_traj, dim=0).transpose(0, 1))
+        
+        # model_traj is list of [B, N, 3]. stack -> [T, B, N, 3]. transpose -> [B, T, N, 3]
+        model_trajs = du.to_numpy(torch.stack(model_traj, dim=0).transpose(0, 1))
+        
+        diffuse_masks_np = du.to_numpy(diffuse_mask)
 
         for i in range(num_batch):
             sample_dir = sample_dirs[i]
-            
             os.makedirs(sample_dir, exist_ok=True)
+            
             if 'aatype' in batch:
-                aatype = du.to_numpy(batch['aatype'].long())[0]
+                aatype = du.to_numpy(batch['aatype'].long())[i]
             else:
                 aatype = np.zeros(sample_length, dtype=int)
 
-            start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            start_sample_time = time.time()
-
-            prot_traj, atom37_traj, model_traj, _ = interpolant.sample(
-                1, sample_length, self.model,
-                trans_1=trans_1, rotmats_1=rotmats_1, diffuse_mask=diffuse_mask
-            )
-
-
-
-            finish_sample_time = time.time()
-            sample_elapsed_time = finish_sample_time - start_sample_time
-            allocated = torch.cuda.memory_allocated(device) / (1024 ** 3)  
-            reserved = torch.cuda.memory_reserved(device) / (1024 ** 3)   
-
-            bb_trajs = du.to_numpy(torch.stack(atom37_traj, dim=0).transpose(0, 1))
-            bb_traj = bb_trajs[0]
+            bb_traj = bb_trajs[i] # [T, N, 37, 3]
+            curr_model_traj = model_trajs[i] # [T, N, 3]
+            curr_diffuse_mask = diffuse_masks_np[i]
 
             traj_paths = eu.save_traj(
                 bb_traj[-1],
                 bb_traj[0],
-                np.flip(du.to_numpy(torch.concat(model_traj, dim=0)), axis=0),
-                du.to_numpy(diffuse_mask)[0],
+                np.flip(curr_model_traj, axis=0),
+                curr_diffuse_mask,
                 output_dir=sample_dir,
                 aatype=aatype,
             )
@@ -525,7 +535,7 @@ class FlowModule(LightningModule):
                 )
                 allocated = torch.cuda.memory_allocated() / 1024**3
                 reserved = torch.cuda.memory_reserved() / 1024**3
-                self._print_logger.info(f'Done sampling sample {i}: {pdb_path}, allocated {allocated:.2f}GB, reserved {reserved:.2f}GB')
+                self._print_logger.info(f'Done sampling sample {sample_ids[i]}: {pdb_path}, allocated {allocated:.2f}GB, reserved {reserved:.2f}GB')
                 finish_eval_time = time.time()
                 eval_time = finish_eval_time - finish_sample_time
                 total_time = finish_eval_time - start_sample_time
@@ -534,7 +544,8 @@ class FlowModule(LightningModule):
                                                     columns=self._time_records.columns)],
                     ignore_index=True
                 )
-                torch.cuda.empty_cache() 
+                # Don't empty cache inside loop or it slows down
+                # torch.cuda.empty_cache()
             else:
                 pdb_path = traj_paths['sample_path']
                 allocated = torch.cuda.memory_allocated() / 1024**3
@@ -547,7 +558,8 @@ class FlowModule(LightningModule):
                                                     columns=self._time_records.columns)],
                     ignore_index=True
                 )
-                torch.cuda.empty_cache() 
+        
+        torch.cuda.empty_cache() 
 
     def on_predict_epoch_end(self):
         if torch.distributed.is_initialized():
