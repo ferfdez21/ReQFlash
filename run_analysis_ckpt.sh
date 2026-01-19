@@ -1,38 +1,43 @@
 #!/bin/bash
+# Script to run metric analysis for a single inference output folder
 
-#SBATCH --job-name=reqflash_metrics
-#SBATCH --partition=gpu
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
-#SBATCH --output=logs/metrics_%j.out
-#SBATCH --error=logs/metrics_%j.err
-
-# Usage: sbatch run_checkpoint_analysis.sh <inference_output_folder>
-
-# 1. Validate Arguments
-INFERENCE_DIR="$1"
-
-if [ -z "$INFERENCE_DIR" ]; then
-    echo "Usage: sbatch $0 <inference_output_folder>"
+if [ -z "$1" ]; then
+    echo "Usage: $0 <inference_dir> [dataset_dir]"
     exit 1
 fi
+
+BASE_DIR="$(pwd)"
+INFERENCE_DIR="$1"
+SCRIPT_PATH="${BASE_DIR}/analysis/run_foldseek_parallel.sh"
+DATASET_DIR="$2"
+
+echo "Processing $INFERENCE_DIR"
 
 if [ ! -d "$INFERENCE_DIR" ]; then
-    echo "Error: Directory '$INFERENCE_DIR' does not exist."
+    echo "Error: Directory $INFERENCE_DIR does not exist."
     exit 1
 fi
 
-# 2. Setup Environment
-eval "$(conda shell.bash hook)"
-conda activate reqflash
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
-echo "Running Metrics Analysis on: $INFERENCE_DIR"
-echo "Running on $(hostname)"
+# Check config file (Metrics.txt depends on it)
+if [ ! -f "$INFERENCE_DIR/config.yaml" ]; then
+   echo "Error: config file not found in $INFERENCE_DIR."
+   exit 1
+fi
 
-# 3. Run Metrics Calculation
-PYTHONPATH=. python analysis/all_metric_calculation.py \
-    --inference_dir "$INFERENCE_DIR" \
-    --type qflow
+if [ -n "$DATASET_DIR" ]; then
+    echo "Running full analysis (including Foldseek)..."
+    PYTHONPATH=. python analysis/all_metric_calculation.py \
+        --inference_dir "$INFERENCE_DIR" \
+        --script_path "$SCRIPT_PATH" \
+        --dataset_dir "$DATASET_DIR" \
+        --type qflow
+else
+    echo "Running analysis (Designability only, no Foldseek)..."
+    PYTHONPATH=. python analysis/all_metric_calculation.py \
+        --inference_dir "$INFERENCE_DIR" \
+        --type qflow
+fi
 
-echo "Metrics calculation finished."
+echo "Finished analysis for $INFERENCE_DIR"
