@@ -38,7 +38,7 @@ def main():
     
     for t in timesteps:
         # QFlash
-        p1 = os.path.join(reqflash_base, f"{t}_steps", "Metrics.txt")
+        p1 = os.path.join(reqflash_base, "Metrics.txt")
         m1 = parse_metrics(p1)
         data.append({
             'Model': 'QFlash',

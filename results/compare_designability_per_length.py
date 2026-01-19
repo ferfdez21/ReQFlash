@@ -62,7 +62,7 @@ def main():
     parser.add_argument("reqflash_path", help="Path to ReQFlash epoch folder (e.g. .../epoch102)")
     args = parser.parse_args()
     
-    flash_csv = os.path.join(args.reqflash_path, "500_steps", "All_Results_Origin.csv")
+    flash_csv = os.path.join(args.reqflash_path, "All_Results_Origin.csv")
     flow_csv = "inference_outputs/ckpts/qflow_scope/500_steps/All_Results_Origin.csv"
     num_bins = 8
     

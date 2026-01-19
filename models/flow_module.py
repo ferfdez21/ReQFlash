@@ -453,8 +453,6 @@ class FlowModule(LightningModule):
         sample_ids = batch['sample_id'].squeeze().tolist()
         sample_ids = [sample_ids] if isinstance(sample_ids, int) else sample_ids
         num_batch = len(sample_ids)
-        print(f"DEBUG: predict_step called with batch size: {num_batch}")
-        self._print_logger.info(f"DEBUG: predict_step called with batch size: {num_batch}")
 
 
         if 'diffuse_mask' in batch: # motif-scaffolding
