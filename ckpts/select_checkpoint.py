@@ -266,8 +266,8 @@ def main():
     print("="*80)
     
     # Save CSV of top 10
-    top_10.to_csv("results/top_10_checkpoints_test.csv", index=False)
-    print("Saved results/top_10_checkpoints_test.csv")
+    top_10.to_csv("ckpts/top_10_checkpoints_test.csv", index=False)
+    print("Saved ckpts/top_10_checkpoints_test.csv")
 
 if __name__ == "__main__":
     main()
