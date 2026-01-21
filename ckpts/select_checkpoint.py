@@ -256,12 +256,12 @@ def main():
     print("\n" + "="*90)
     print(f"TOP {len(top_10)} CHECKPOINTS SELECTED")
     print("="*90)
-    print(f"{'Path':<80} | {'Step':<8} | {'Ca-Ca':<7} | {'Strand':<7} | {'Clashes':<7} | {'SecDev':<7}")
+    print(f"{'Path':<80} | {'Epoch':<8} | {'Ca-Ca':<7} | {'Strand':<7} | {'Clashes':<7} | {'SecDev':<7}")
     print("-" * 130)
     
     for idx, row in top_10.iterrows():
         clashes = row.get('valid/num_ca_ca_clashes', -1)
-        print(f"{row['path']:<80} | {row['step']:<8.0f} | {row['valid/ca_ca_valid_percent']:<7.4f} | {row['valid/strand_percent']:<7.4f} | {clashes:<7.1f} | {row['sec_deviation']:<7.4f}")
+        print(f"{row['path']:<80} | {row['epoch']:<8.0f} | {row['valid/ca_ca_valid_percent']:<7.4f} | {row['valid/strand_percent']:<7.4f} | {clashes:<7.1f} | {row['sec_deviation']:<7.4f}")
         
     print("="*80)
     
