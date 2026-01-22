@@ -636,36 +636,64 @@ if __name__ == "__main__":
     parser.add_argument("--type", default="qflow", help="Type of evaluation (qflow, FrameFlow, FoldFlow, FrameDiff, Genie2, RFdiffusion).")
 
 
+    parser.add_argument("--sweep", action="store_true", help="If set, treats inference_dir as a folder of checkpoints and processes each subfolder.")
+
     args = parser.parse_args()
 
-    inference_dir = args.inference_dir
+    root_dir = args.inference_dir
     script_path = args.script_path
     dataset_dir = args.dataset_dir
-    output_dir = inference_dir  # Use inference_dir if output_dir is not provided
     database = args.database
     type = args.type
+    is_sweep = args.sweep
 
-    start_time = time.time()
-    clean_folder(inference_dir)
-    file_generate(inference_dir, type=type)
-    plot_time(inference_dir, type=type)
-    designability_calculate(inference_dir)
-    calc_additional_metrics(inference_dir, type, base_dir=None, time_folder=None, length_values=None)
-
-    if dataset_dir and script_path:
-        run_foldseek(inference_dir, script_path, output_dir, database, dataset_dir=dataset_dir)
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            future_diversity_designable = executor.submit(diversity_calculate, inference_dir, type='Designable')
-            future_diversity_all = executor.submit(diversity_calculate, inference_dir, type='All')
-
-        # wait for all the futures to complete
-        concurrent.futures.wait([future_diversity_designable, future_diversity_all])
+    def process_single_checkpoint(inference_dir):
+        print(f"Processing checkpoint: {inference_dir}")
+        output_dir = inference_dir  # Use inference_dir if output_dir is not provided
         
-        foldseek_calculate(output_dir)
+        start_time = time.time()
+        
+        try:
+            clean_folder(inference_dir)
+            file_generate(inference_dir, type=type)
+            plot_time(inference_dir, type=type)
+            designability_calculate(inference_dir)
+            calc_additional_metrics(inference_dir, type, base_dir=None, time_folder=None, length_values=None)
+
+            if dataset_dir and script_path:
+                run_foldseek(inference_dir, script_path, output_dir, database, dataset_dir=dataset_dir)
+                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    future_diversity_designable = executor.submit(diversity_calculate, inference_dir, type='Designable')
+                    future_diversity_all = executor.submit(diversity_calculate, inference_dir, type='All')
+
+                # wait for all the futures to complete
+                concurrent.futures.wait([future_diversity_designable, future_diversity_all])
+                
+                foldseek_calculate(output_dir)
+            else:
+                logging.info(f"[{inference_dir}] Skipping Foldseek components.")
+            
+            total_time = time.time() - start_time
+            with open(os.path.join(output_dir, "Metrics.txt"), "a") as f:
+                f.write(f"\nTotal Evaluation time: {total_time} seconds\n")
+                f.write(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                
+        except Exception as e:
+            print(f"Error processing {inference_dir}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    if is_sweep:
+        if not os.path.exists(root_dir):
+            print(f"Root directory {root_dir} does not exist.")
+            exit(1)
+            
+        # Iterate over all subdirectories
+        subdirs = sorted([os.path.join(root_dir, d) for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))])
+        print(f"Sweep mode enabled. Found {len(subdirs)} checkpoints in {root_dir}.")
+        
+        for ckpt in subdirs:
+            process_single_checkpoint(ckpt)
     else:
-        logging.info("Skipping Foldseek and Diversity/Novelty calculations (Foldseek arguments not provided).")
-    
-    total_time = time.time() - start_time
-    with open(os.path.join(output_dir, "Metrics.txt"), "a") as f:
-        f.write(f"\nTotal Evaluation time: {total_time} seconds\n")
-        f.write(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        # Single mode
+        process_single_checkpoint(root_dir)
