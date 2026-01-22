@@ -649,6 +649,21 @@ if __name__ == "__main__":
 
     def process_single_checkpoint(inference_dir):
         print(f"Processing checkpoint: {inference_dir}")
+        
+        # SAFETY CHECK: Ensure we are in a valid checkpoint folder with 'length_' subdirs
+        if not os.path.exists(inference_dir):
+             print(f"Error: Directory {inference_dir} not found.")
+             return
+
+        subitems = os.listdir(inference_dir)
+        has_length_folder = any(os.path.isdir(os.path.join(inference_dir, i)) and i.startswith("length") for i in subitems)
+        
+        if not has_length_folder:
+            print(f"CRITICAL ERROR: No 'length_' subfolders found in {inference_dir}.")
+            print(f"Expected structure: {inference_dir}/length_X/...")
+            print("Aborting processing for this folder to prevent accidental data loss (clean_folder would delete unknown subdirs).")
+            return
+
         output_dir = inference_dir  # Use inference_dir if output_dir is not provided
         
         start_time = time.time()
