@@ -522,8 +522,8 @@ class FlowModule(LightningModule):
                 aatype=aatype,
             )
 
+            pdb_path = traj_paths['sample_path']
             if self._infer_cfg.samples.seq_per_sample > 0:
-                pdb_path = traj_paths['sample_path']
                 sc_output_dir = os.path.join(sample_dir, 'self_consistency')
                 os.makedirs(sc_output_dir, exist_ok=True)
                 shutil.copy(pdb_path, os.path.join(
@@ -538,27 +538,19 @@ class FlowModule(LightningModule):
                 self._print_logger.info(f'Done sampling sample {sample_ids[i]}: {pdb_path}, allocated {allocated:.2f}GB, reserved {reserved:.2f}GB')
                 finish_eval_time = time.time()
                 eval_time = finish_eval_time - finish_sample_time
-                total_time = finish_eval_time - start_sample_time
-                self._time_records = pd.concat(
-                    [self._time_records, pd.DataFrame([[sample_length, pdb_path, start_time, sample_elapsed_time, eval_time, total_time, allocated, reserved]], 
-                                                    columns=self._time_records.columns)],
-                    ignore_index=True
-                )
-                # Don't empty cache inside loop or it slows down
-                # torch.cuda.empty_cache()
             else:
-                pdb_path = traj_paths['sample_path']
                 allocated = torch.cuda.memory_allocated() / 1024**3
                 reserved = torch.cuda.memory_reserved() / 1024**3
                 finish_eval_time = time.time()
                 eval_time = None
-                total_time = finish_eval_time - start_sample_time
-                self._time_records = pd.concat(
-                    [self._time_records, pd.DataFrame([[sample_length, pdb_path, start_time, sample_elapsed_time, eval_time, total_time, allocated, reserved]], 
-                                                    columns=self._time_records.columns)],
-                    ignore_index=True
-                )
+            total_time = finish_eval_time - start_sample_time
+            self._time_records = pd.concat(
+                [self._time_records, pd.DataFrame([[sample_length, pdb_path, start_time, sample_elapsed_time, eval_time, total_time, allocated, reserved]], 
+                                                columns=self._time_records.columns)],
+                ignore_index=True
+            )
         
+        # Don't empty cache inside loop or it slows down
         torch.cuda.empty_cache() 
 
     def on_predict_epoch_end(self):
