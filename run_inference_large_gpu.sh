@@ -2,10 +2,9 @@
 
 #SBATCH --job-name=reqflash_inference_large
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:nvidia_h200_nvl:1  # Specific request for H200 NVL 140GB
+#SBATCH --gres=gpu:nvidia_h200_nvl:1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
 #SBATCH --output=logs/inference_large_%j.out
 #SBATCH --error=logs/inference_large_%j.err
 
@@ -25,8 +24,8 @@ conda activate reqflash
 
 echo "Running inference on $(hostname) with GPU: $CUDA_VISIBLE_DEVICES"
 echo "Checkpoint: $CKPT_PATH"
-echo "Timesteps: 500"
-echo "Batch Size: 10 (Parallel sampling for all 10 samples per length)"
+# echo "Timesteps: 500"
+# echo "Batch Size: 10 (Parallel sampling for all 10 samples per length)"
 
 # 3. Run Inference
 # processing 10 samples per length in a single batch

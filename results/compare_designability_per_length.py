@@ -4,34 +4,62 @@ import os
 import re
 import numpy as np
 
-def compute_metrics_binned(csv_path, num_bins=8):
-    # Reads All_Results_Origin.csv and bins by length
+def load_data(path, multi_ckpt):
+    df_list = []
     
-    if not os.path.exists(csv_path):
-        print(f"Warning: {csv_path} not found.")
+    if multi_ckpt:
+        if not os.path.exists(path):
+            print(f"Warning: Directory {path} not found")
+            return pd.DataFrame()
+            
+        # Scan subdirectories
+        subdirs = [os.path.join(path, d) for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
+        print(f"Multi-ckpt: Found {len(subdirs)} subdirectories in {path}")
+        
+        for ckpt in subdirs:
+            csv_path = os.path.join(ckpt, "All_Results_Origin.csv")
+            if os.path.exists(csv_path):
+                try:
+                    d = pd.read_csv(csv_path)
+                    df_list.append(d)
+                except Exception as e:
+                    print(f"Error reading {csv_path}: {e}")
+    else:
+        # Single file/dir mode
+        # User passes FOLDER, script appends "All_Results_Origin.csv"
+        csv_path = os.path.join(path, "All_Results_Origin.csv")
+        if os.path.exists(csv_path):
+            try:
+                d = pd.read_csv(csv_path)
+                df_list.append(d)
+            except Exception as e:
+                print(f"Error reading {csv_path}: {e}")
+        else:
+            print(f"Warning: {csv_path} not found")
+            
+    if not df_list:
         return pd.DataFrame()
+        
+    return pd.concat(df_list, ignore_index=True)
 
-    df = pd.read_csv(csv_path)
+def compute_metrics_binned(df, num_bins=8):
+    if df.empty:
+        return pd.DataFrame()
+        
     if 'length' not in df.columns or 'min_rmsd' not in df.columns:
-        print(f"Warning: columns missing in {csv_path}")
+        print(f"Warning: columns missing in DataFrame")
         return pd.DataFrame()
         
     # Dynamic Binning
-    # Infer range from data or assume standard 60-128 if within range
-    # To be safe and consistent across both datasets (which might have missing lengths),
-    # let's use the explicit global range 60-128 which the user mentioned.
     min_len = 60
-    max_len = 129 # 128 is last length, so 129 for right=False
+    max_len = 129
     
-    # Check if data is outside this range?
     dmin = df['length'].min()
     dmax = df['length'].max()
-    if dmin < min_len: min_len = dmin
-    if dmax >= max_len: max_len = dmax + 1
+    if dmin < min_len: min_len = int(dmin)
+    if dmax >= max_len: max_len = int(dmax + 1)
     
     edges = np.linspace(min_len, max_len, num_bins + 1).astype(int)
-    # Create labels like "60-68"
-    # edges[i] is inclusive start, edges[i+1] is exclusive end
     labels = [f"{edges[i]}-{edges[i+1]-1}" for i in range(len(edges)-1)]
     
     df['bin'] = pd.cut(df['length'], bins=edges, labels=labels, right=False)
@@ -58,46 +86,55 @@ def compute_metrics_binned(csv_path, num_bins=8):
     return pd.DataFrame(results)
 
 def main():
-    parser = argparse.ArgumentParser(description="Compare Designability by Length Bins (500 steps).")
-    parser.add_argument("reqflash_path", help="Path to ReQFlash epoch folder (e.g. .../epoch102)")
+    parser = argparse.ArgumentParser(description="Compare Designability by Length Bins (Experimental vs Baseline).")
+    parser.add_argument("--experimental", required=True, help="Path to experimental model inference output folder")
+    parser.add_argument("--baseline", required=True, help="Path to baseline model inference output folder")
+    parser.add_argument("--multi-ckpt", action="store_true", help="Aggregate multiple checkpoints in the given folders")
     args = parser.parse_args()
     
-    flash_csv = os.path.join(args.reqflash_path, "All_Results_Origin.csv")
-    flow_csv = "inference_outputs/ckpts/qflow_scope/500_steps/All_Results_Origin.csv"
     num_bins = 8
     
-    print(f"Reading QFlash: {flash_csv}...")
-    df_flash = compute_metrics_binned(flash_csv, num_bins=num_bins)
+    print(f"Loading experimental data from {args.experimental}...")
+    df_raw_experimental = load_data(args.experimental, args.multi_ckpt)
+    df_experimental = compute_metrics_binned(df_raw_experimental, num_bins=num_bins)
     
-    print(f"Reading QFlow: {flow_csv}...")
-    df_flow = compute_metrics_binned(flow_csv, num_bins=num_bins)
+    print(f"Loading baseline data from {args.baseline}...")
+    df_raw_baseline = load_data(args.baseline, args.multi_ckpt)
+    df_baseline = compute_metrics_binned(df_raw_baseline, num_bins=num_bins)
     
-    if df_flash.empty or df_flow.empty:
-        print("Data extraction failed.")
+    if df_experimental.empty or df_baseline.empty:
+        print("Data extraction failed for one or both models.")
         return
 
     # Merge
-    df_flash = df_flash.rename(columns={'designability': 'QFlash_Designability', 'scRMSD_str': 'QFlash_scRMSD'})
-    df_flow = df_flow.rename(columns={'designability': 'QFlow_Designability', 'scRMSD_str': 'QFlow_scRMSD'})
+    df_experimental = df_experimental.rename(columns={'designability': 'Experimental_Designability', 'scRMSD_str': 'Experimental_scRMSD'})
+    df_baseline = df_baseline.rename(columns={'designability': 'Baseline_Designability', 'scRMSD_str': 'Baseline_scRMSD'})
     
-    merged = pd.merge(df_flow, df_flash, on='length_bin', how='outer')
-    # merged = merged.sort_values(by='length_bin') # Already sorted by categorical
+    merged = pd.merge(df_baseline, df_experimental, on='length_bin', how='outer')
     
-    cols = ['length_bin', 'QFlow_Designability', 'QFlow_scRMSD', 'QFlash_Designability', 'QFlash_scRMSD']
+    cols = ['length_bin', 'Baseline_Designability', 'Baseline_scRMSD', 'Experimental_Designability', 'Experimental_scRMSD']
+    # Filter only existing cols
+    cols = [c for c in cols if c in merged.columns]
     merged = merged[cols]
     
     # Sort bins numerically by lower bound
-    # Extract lower bound from "60-77" -> 60 using regex
-    merged['sort_key'] = merged['length_bin'].astype(str).str.extract(r'^(\d+)').astype(int)
+    merged['sort_key'] = merged['length_bin'].astype(str).str.extract(r'^(\d+)').fillna(0).astype(int)
     merged = merged.sort_values(by='sort_key')
     merged = merged.drop(columns=['sort_key'])
     
-    merged['QFlow_Designability'] = merged['QFlow_Designability'].round(3)
-    merged['QFlash_Designability'] = merged['QFlash_Designability'].round(3)
+    if 'Baseline_Designability' in merged.columns:
+        merged['Baseline_Designability'] = merged['Baseline_Designability'].round(3)
+    if 'Experimental_Designability' in merged.columns:
+        merged['Experimental_Designability'] = merged['Experimental_Designability'].round(3)
     
-    match = re.search(r'epoch=?(\d+)', args.reqflash_path)
-    epoch = match.group(1) if match else "unknown"
-    out = f"results/designability_by_length_bins_epoch{epoch}_500steps.csv"
+    experimental_name = os.path.basename(os.path.normpath(args.experimental))
+    baseline_name = os.path.basename(os.path.normpath(args.baseline))
+    
+    if args.multi_ckpt:
+        out = f"results/compare_bins_multi_{experimental_name}_vs_{baseline_name}.csv"
+    else:
+        out = f"results/compare_bins_{experimental_name}_vs_{baseline_name}.csv"
+        
     if not os.path.exists('results'): os.makedirs('results')
     
     merged.to_csv(out, index=False)

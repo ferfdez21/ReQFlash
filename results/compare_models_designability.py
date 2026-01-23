@@ -24,47 +24,34 @@ def parse_metrics(file_path):
     return metrics
 
 def main():
-    parser = argparse.ArgumentParser(description="Compare Designability Metrics (QFlash vs QFlow).")
-    parser.add_argument("reqflash_path", type=str, help="Path to ReQFlash inference outputs folder (e.g. .../epoch102)")
+    parser = argparse.ArgumentParser(description="Compare Designability Metrics (Experimental vs Baseline).")
+    parser.add_argument("--experimental", required=True, help="Path to experimental model inference output folder")
+    parser.add_argument("--baseline", required=True, help="Path to baseline model inference output folder")
     args = parser.parse_args()
-    
-    timesteps = [10, 20, 50, 100, 200, 300, 400, 500]
-    
-    reqflash_base = args.reqflash_path
-    # Baseline path
-    reqflow_base = "inference_outputs/ckpts/qflow_scope"
     
     data = []
     
-    for t in timesteps:
-        # QFlash
-        p1 = os.path.join(reqflash_base, "Metrics.txt")
-        m1 = parse_metrics(p1)
-        data.append({
-            'Model': 'QFlash',
-            'Step': t,
-            'grouped_rmsd_below_2_ratio': m1['grouped_rmsd_below_2_ratio'],
-            'min_rmsd_range': m1['min_rmsd_range']
-        })
-        
-        # QFlow (Baseline)
-        p2 = os.path.join(reqflow_base, f"{t}_steps", "Metrics.txt")
-        m2 = parse_metrics(p2)
-        data.append({
-            'Model': 'QFlow',
-            'Step': t,
-            'grouped_rmsd_below_2_ratio': m2['grouped_rmsd_below_2_ratio'],
-            'min_rmsd_range': m2['min_rmsd_range']
-        })
-        
-    df = pd.DataFrame(data)
+    # Experimental
+    p1 = os.path.join(args.experimental, "Metrics.txt")
+    m1 = parse_metrics(p1)
+    data.append({
+        'Model': 'Experimental',
+        'Path': os.path.basename(os.path.normpath(args.experimental)),
+        'grouped_rmsd_below_2_ratio': m1.get('grouped_rmsd_below_2_ratio', 'N/A'),
+        'min_rmsd_range': m1.get('min_rmsd_range', 'N/A')
+    })
     
-    # Sort: QFlow first, then QFlash? Or just by Model name?
-    # User said: "rows per model (QFlow (baseline) and QFlash), then per timestep"
-    # So model primary sort key.
-    # Let's sort QFlow first.
-    # We can use a custom sort or just descending 'Model' since 'QFlow' > 'QFlash'.
-    df = df.sort_values(by=['Model', 'Step'], ascending=[False, False]) 
+    # Baseline
+    p2 = os.path.join(args.baseline, "Metrics.txt")
+    m2 = parse_metrics(p2)
+    data.append({
+        'Model': 'Baseline',
+        'Path': os.path.basename(os.path.normpath(args.baseline)),
+        'grouped_rmsd_below_2_ratio': m2.get('grouped_rmsd_below_2_ratio', 'N/A'),
+        'min_rmsd_range': m2.get('min_rmsd_range', 'N/A')
+    })
+    
+    df = pd.DataFrame(data)
     
     # Print table
     pd.set_option('display.max_rows', None)
@@ -74,12 +61,10 @@ def main():
     print("\nComparison Table:")
     print(df.to_string(index=False))
     
-    # Extract epoch for filename
-    # matches epoch102 or epoch=102
-    match = re.search(r'epoch?(\d+)', reqflash_base)
-    epoch = match.group(1) if match else "unknown"
+    experimental_name = os.path.basename(os.path.normpath(args.experimental))
+    baseline_name = os.path.basename(os.path.normpath(args.baseline))
+    outfile = f"results/comparison_metrics_{experimental_name}_vs_{baseline_name}.txt"
     
-    outfile = f"results/designability_comparison_epoch{epoch}.txt"
     if not os.path.exists('results'):
         os.makedirs('results')
         
