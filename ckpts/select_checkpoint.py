@@ -261,7 +261,7 @@ def main():
     
     for idx, row in top_10.iterrows():
         clashes = row.get('valid/num_ca_ca_clashes', -1)
-        print(f"{row['path']:<80} | {row['epoch']:<8.0f} | {row['valid/ca_ca_valid_percent']:<7.4f} | {row['valid/strand_percent']:<7.4f} | {clashes:<7.1f} | {row['sec_deviation']:<7.4f}")
+        print(f"{row['path']:<80} | {row['epoch']:<8.0f} | {row['valid/ca_ca_valid_percent']:<7.3f} | {row['valid/strand_percent']:<7.3f} | {clashes:<7.3f} | {row['sec_deviation']:<7.3f}")
         
     print("="*80)
     
