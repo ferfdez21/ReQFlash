@@ -156,7 +156,7 @@ def main():
         
         # Smooth the loss curve to remove noise
         # Since we have ~2000 sampled points, a window of ~50 is reasonable (~2.5% of data)
-        loss_df['smoothed_loss'] = loss_df['train/loss'].rolling(window=50, center=True).mean()
+        loss_df['smoothed_loss'] = loss_df['train/loss'].rolling(window=500, center=True).mean()
         
         # Drop NaNs created by rolling
         clean_loss = loss_df.dropna(subset=['smoothed_loss'])
@@ -205,7 +205,7 @@ def main():
     # -----------------------------
 
     # Filter Metrics
-    # 0) valid/num_ca_ca_clashes == 0
+    # 0) valid/num_ca_ca_clashes < 0.02
     # 1) ca_ca_valid_percent > 0.99
     # 2) sec_deviation < 0.2
     
@@ -216,10 +216,10 @@ def main():
     
     print("\nFiltering...")
 
-    # 0) Clashes == 0
+    # 0) Clashes < 0.02
     if 'valid/num_ca_ca_clashes' in df.columns:
-        filtered_0 = df[df['valid/num_ca_ca_clashes'] == 0]
-        print(f"0) Clashes == 0: {len(filtered_0)} candidates")
+        filtered_0 = df[df['valid/num_ca_ca_clashes'] < 0.02]
+        print(f"0) Clashes < 0.02: {len(filtered_0)} candidates")
     else:
         print("Warning: 'valid/num_ca_ca_clashes' not found in metrics. Skipping clash filter.")
         filtered_0 = df
